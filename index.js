@@ -1,35 +1,25 @@
-const SerialPort = require('serialport');
-const Readline = require('@serialport/parser-readline');
+const { SerialPort } = require('serialport');
+const { ReadlineParser } = require('@serialport/parser-readline'); // Correct import
 
-// Replace with the correct serial port name (e.g., '/dev/ttyUSB0' on Linux, 'COM3' on Windows)
-const portName = '/dev/ttyUSB0';  // Update with your Arduino port
+const port = new SerialPort({ path: '/dev/ttyACM0', baudRate: 115200 });
 
-// Create a new SerialPort instance
-const port = new SerialPort(portName, {
-  baudRate: 9600,
-});
+const parser = port.pipe(new ReadlineParser({ delimiter: '\n' })); // Use ReadlineParser
 
-// Create a parser for reading lines from the serial port
-const parser = port.pipe(new Readline({ delimiter: '\n' }));
-
-
-parser.on('data', (data) => {
-  console.log(`Received from Arduino: ${data}`);
-});
-
-function sendCommand(command) {
-  port.write(command, (err) => {
-    if (err) {
-      return console.log('Error on write: ', err.message);
-    }
-    console.log(`Sent to Arduino: ${command}`);
-  });
-}
-
-setTimeout(() => {
-  sendCommand('T'); 
-}, 3000);
-
-port.on('error', (err) => {
-  console.log('Error: ', err.message);
+parser.on('data', (line) => {
+  if (line.startsWith('SENSOR:')) {
+    const data = line.replace('SENSOR:', '').split(',');
+    const sensorData = {
+      humidity: parseFloat(data[0]),
+      temperature: parseFloat(data[1]),
+      pressure1: parseInt(data[2]),
+      pressure2: parseInt(data[3]),
+      light3: parseInt(data[4]),
+      light4: parseInt(data[5]),
+      frontDistance: parseFloat(data[6]),
+      backDistance: parseFloat(data[7]),
+    };
+    console.log('Sensor Data:', sensorData);
+    //Send to DB
+  }
+  console.log('Data:', line);
 });
